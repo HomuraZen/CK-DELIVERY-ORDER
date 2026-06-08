@@ -1,0 +1,270 @@
+import { useState } from "react";
+
+const fixedItems = [
+  { name: "Chicken Chop", unit: "Pkt" },
+  { name: "Chicken wing", unit: "Pkt" },
+  { name: "Chicken breast", unit: "Pkt" },
+  { name: "Chicken pepperoni", unit: "Ctn" },
+  { name: "Minced chicken", unit: "Pkt" },
+  { name: "Chicken cube", unit: "Pkt" },
+  { name: "Salmon for Don", unit: "Pkt" },
+  { name: "Salmon for pizza", unit: "Pkt" },
+  { name: "Salmon for chazuke", unit: "Pcs" },
+  { name: "Perch fillet", unit: "Pkt" },
+  { name: "Perch fillet cube", unit: "Pkt" },
+  { name: "Smoked duck for pizza", unit: "Pkt" },
+  { name: "Smoked duck for pasta", unit: "Pkt" },
+  { name: "Beef pepperoni", unit: "Ctn" },
+  { name: "Angus beef", unit: "Pkt" },
+  { name: "Minced beef", unit: "Pkt" },
+  { name: "Roasted beef", unit: "Pkt" },
+  { name: "Tomato bolognese sauce", unit: "Pkt" },
+  { name: "Japanese curry", unit: "Pkt" },
+  { name: "Asampadas curry", unit: "Pkt" },
+  { name: "Dry curry", unit: "Pkt" },
+  { name: "Mutton curry", unit: "Pkt" },
+  { name: "Shark meat", unit: "Pkt" },
+  { name: "Dashi soup", unit: "Pkt" },
+  { name: "Tempura prawn", unit: "Ctn" },
+  { name: "Truffle Base", unit: "Ctn" },
+  { name: "Truffle sauce", unit: "Pkt" },
+  { name: "Seafood", unit: "Pkt" },
+  { name: "Durian paste", unit: "Pkt" },
+  { name: "Tobico orange", unit: "Tin" },
+  { name: "Pasta", unit: "Pkt" },
+  { name: "Strawberry Jam", unit: "Ctn" },
+];
+
+const today = new Date().toISOString().split("T")[0];
+
+export default function App() {
+  const [staffName, setStaffName] = useState("");
+  const [date, setDate] = useState(today);
+  const [branch, setBranch] = useState("");
+  const [quantities, setQuantities] = useState({});
+  const [delivered, setDelivered] = useState({});
+  const [checked, setChecked] = useState({});
+  const [notes, setNotes] = useState({});
+  const [bakery, setBakery] = useState([
+    { name: "", qty: "", unit: "" },
+    { name: "", qty: "", unit: "" },
+    { name: "", qty: "", unit: "" },
+    { name: "", qty: "", unit: "" },
+    { name: "", qty: "", unit: "" },
+  ]);
+
+  const setQty = (name, val) => setQuantities(q => ({ ...q, [name]: val }));
+  const toggleDelivered = (name) => setDelivered(d => ({ ...d, [name]: !d[name] }));
+  const toggleChecked = (name) => setChecked(c => ({ ...c, [name]: !c[name] }));
+  const setNote = (name, val) => setNotes(n => ({ ...n, [name]: val }));
+
+  const setBakeryField = (i, field, val) => {
+    setBakery(b => b.map((row, idx) => idx === i ? { ...row, [field]: val } : row));
+  };
+
+  const addBakeryRow = () => setBakery(b => [...b, { name: "", qty: "", unit: "" }]);
+  const removeBakeryRow = (i) => setBakery(b => b.filter((_, idx) => idx !== i));
+
+  const handlePrint = () => {
+    if (!staffName.trim() || !branch.trim()) {
+      alert("Please fill in Staff Name and Delivery Branch.");
+      return;
+    }
+
+    const mainRows = fixedItems
+      .filter(item => quantities[item.name])
+      .map(item => `
+        <tr>
+          <td>${item.name}</td>
+          <td style="text-align:center">${quantities[item.name]}</td>
+          <td style="text-align:center">${item.unit}</td>
+          <td style="text-align:center">${delivered[item.name] ? "✓" : ""}</td>
+          <td style="text-align:center">${checked[item.name] ? "✓" : ""}</td>
+          <td>${notes[item.name] || ""}</td>
+        </tr>`).join("");
+
+    const bakeryRows = bakery
+      .filter(r => r.name.trim() && r.qty)
+      .map(r => `
+        <tr>
+          <td>${r.name} <em style="color:#888">(Bakery)</em></td>
+          <td style="text-align:center">${r.qty}</td>
+          <td style="text-align:center">${r.unit}</td>
+          <td></td><td></td><td></td>
+        </tr>`).join("");
+
+    if (!mainRows && !bakeryRows) {
+      alert("Please enter at least one item quantity.");
+      return;
+    }
+
+    const html = `<!DOCTYPE html><html><head><title>Delivery Order</title>
+    <style>
+      body { font-family: Arial, sans-serif; padding: 30px; color: #333; font-size: 13px; }
+      h2 { text-align: center; margin: 0 0 4px 0; font-size: 16px; }
+      .sub { text-align: center; margin: 0 0 16px 0; font-size: 13px; }
+      .info { margin-bottom: 16px; }
+      .info p { margin: 4px 0; }
+      table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+      th { background: #eee; border: 1px solid #ccc; padding: 8px; font-size: 12px; }
+      td { border: 1px solid #ccc; padding: 8px; font-size: 12px; }
+      @media print { body { padding: 15px; } }
+    </style></head><body>
+    <h2>JUTA FNB SDN BHD (202501027901)</h2>
+    <p class="sub">ATT: MR HONG - 012 7638835</p>
+    <div class="info">
+      <p><strong>Staff Name:</strong> ${staffName}</p>
+      <p><strong>Date:</strong> ${date}</p>
+      <p><strong>Delivery to:</strong> ${branch}</p>
+    </div>
+    <table>
+      <thead>
+        <tr>
+          <th style="text-align:left">Item Name</th>
+          <th>Qty</th><th>Unit</th>
+          <th>Delivered ✓</th>
+          <th>Checked by Branch ✓</th>
+          <th style="text-align:left">Notes</th>
+        </tr>
+      </thead>
+      <tbody>${mainRows}${bakeryRows}</tbody>
+    </table>
+    </body></html>`;
+
+    const win = window.open("", "_blank");
+    win.document.write(html);
+    win.document.close();
+    win.focus();
+    setTimeout(() => win.print(), 500);
+  };
+
+  const handleReset = () => {
+    setStaffName(""); setDate(today); setBranch("");
+    setQuantities({}); setDelivered({}); setChecked({}); setNotes({});
+    setBakery([
+      { name: "", qty: "", unit: "" }, { name: "", qty: "", unit: "" },
+      { name: "", qty: "", unit: "" }, { name: "", qty: "", unit: "" },
+      { name: "", qty: "", unit: "" },
+    ]);
+  };
+
+  const cell = { padding: "8px 10px", borderBottom: "1px solid #eee", fontSize: "13px" };
+  const th = { padding: "10px", background: "#f0f0f0", fontSize: "12px", fontWeight: "bold", borderBottom: "2px solid #ddd", whiteSpace: "nowrap" };
+  const inp = { padding: "6px", border: "1px solid #ddd", borderRadius: "4px", fontSize: "13px" };
+
+  return (
+    <div style={{ background: "#f4f4f4", minHeight: "100vh", padding: "20px", fontFamily: "Arial, sans-serif" }}>
+      <div style={{ maxWidth: "960px", margin: "0 auto" }}>
+
+        {/* Header Card */}
+        <div style={{ background: "#fff", borderRadius: "8px", padding: "20px", marginBottom: "16px", boxShadow: "0 1px 4px rgba(0,0,0,0.1)" }}>
+          <h1 style={{ margin: "0 0 16px 0", fontSize: "20px", color: "#222" }}>JUTA FNB — Delivery Order Generator</h1>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px", marginBottom: "12px" }}>
+            <div>
+              <label style={{ display: "block", marginBottom: "4px", fontSize: "13px", fontWeight: "bold", color: "#555" }}>Staff Name *</label>
+              <input value={staffName} onChange={e => setStaffName(e.target.value)} placeholder="Enter staff name" style={{ ...inp, width: "100%", boxSizing: "border-box" }} />
+            </div>
+            <div>
+              <label style={{ display: "block", marginBottom: "4px", fontSize: "13px", fontWeight: "bold", color: "#555" }}>Date</label>
+              <input type="date" value={date} onChange={e => setDate(e.target.value)} style={{ ...inp, width: "100%", boxSizing: "border-box" }} />
+            </div>
+          </div>
+          <p style={{ margin: "0 0 10px 0", fontSize: "13px", color: "#888" }}>ATT: MR HONG — 012 7638835</p>
+          <div>
+            <label style={{ display: "block", marginBottom: "4px", fontSize: "13px", fontWeight: "bold", color: "#555" }}>Delivery to (Branch) *</label>
+            <input value={branch} onChange={e => setBranch(e.target.value)} placeholder="e.g. Damansara Uptown, Bukit Jalil, Batu Pahat" style={{ ...inp, width: "100%", boxSizing: "border-box" }} />
+          </div>
+        </div>
+
+        {/* Main Items */}
+        <div style={{ background: "#fff", borderRadius: "8px", padding: "20px", marginBottom: "16px", boxShadow: "0 1px 4px rgba(0,0,0,0.1)" }}>
+          <h2 style={{ margin: "0 0 14px 0", fontSize: "16px", color: "#333" }}>Main Items</h2>
+          <div style={{ overflowX: "auto" }}>
+            <table style={{ width: "100%", borderCollapse: "collapse" }}>
+              <thead>
+                <tr>
+                  <th style={{ ...th, textAlign: "left" }}>Item Name</th>
+                  <th style={{ ...th, textAlign: "center", width: "60px" }}>Qty</th>
+                  <th style={{ ...th, textAlign: "center", width: "55px" }}>Unit</th>
+                  <th style={{ ...th, textAlign: "center", width: "80px" }}>Delivered ✓</th>
+                  <th style={{ ...th, textAlign: "center", width: "100px" }}>Branch ✓</th>
+                  <th style={{ ...th, textAlign: "left", width: "140px" }}>Notes</th>
+                </tr>
+              </thead>
+              <tbody>
+                {fixedItems.map((item, i) => (
+                  <tr key={i} style={{ background: i % 2 === 0 ? "#fff" : "#fafafa" }}>
+                    <td style={cell}>{item.name}</td>
+                    <td style={{ ...cell, textAlign: "center" }}>
+                      <input type="number" min="0" value={quantities[item.name] || ""} onChange={e => setQty(item.name, e.target.value)} style={{ ...inp, width: "50px", textAlign: "center" }} />
+                    </td>
+                    <td style={{ ...cell, textAlign: "center", color: "#777" }}>{item.unit}</td>
+                    <td style={{ ...cell, textAlign: "center" }}>
+                      <input type="checkbox" checked={!!delivered[item.name]} onChange={() => toggleDelivered(item.name)} style={{ width: "16px", height: "16px", cursor: "pointer" }} />
+                    </td>
+                    <td style={{ ...cell, textAlign: "center" }}>
+                      <input type="checkbox" checked={!!checked[item.name]} onChange={() => toggleChecked(item.name)} style={{ width: "16px", height: "16px", cursor: "pointer" }} />
+                    </td>
+                    <td style={cell}>
+                      <input value={notes[item.name] || ""} onChange={e => setNote(item.name, e.target.value)} placeholder="Remarks..." style={{ ...inp, width: "130px" }} />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        {/* Bakery Section */}
+        <div style={{ background: "#fff", borderRadius: "8px", padding: "20px", marginBottom: "20px", boxShadow: "0 1px 4px rgba(0,0,0,0.1)" }}>
+          <h2 style={{ margin: "0 0 14px 0", fontSize: "16px", color: "#333" }}>Bakery Ingredients</h2>
+          <div style={{ overflowX: "auto" }}>
+            <table style={{ width: "100%", borderCollapse: "collapse" }}>
+              <thead>
+                <tr>
+                  <th style={{ ...th, textAlign: "left" }}>Item Name</th>
+                  <th style={{ ...th, textAlign: "center", width: "60px" }}>Qty</th>
+                  <th style={{ ...th, textAlign: "center", width: "90px" }}>Unit</th>
+                  <th style={{ ...th, textAlign: "center", width: "70px" }}>Remove</th>
+                </tr>
+              </thead>
+              <tbody>
+                {bakery.map((row, i) => (
+                  <tr key={i} style={{ background: i % 2 === 0 ? "#fff" : "#fafafa" }}>
+                    <td style={cell}>
+                      <input value={row.name} onChange={e => setBakeryField(i, "name", e.target.value)} placeholder="e.g. Bread flour, Sugar" style={{ ...inp, width: "100%", boxSizing: "border-box" }} />
+                    </td>
+                    <td style={{ ...cell, textAlign: "center" }}>
+                      <input type="number" min="0" value={row.qty} onChange={e => setBakeryField(i, "qty", e.target.value)} style={{ ...inp, width: "50px", textAlign: "center" }} />
+                    </td>
+                    <td style={{ ...cell, textAlign: "center" }}>
+                      <input value={row.unit} onChange={e => setBakeryField(i, "unit", e.target.value)} placeholder="Pkt/Kg" style={{ ...inp, width: "75px" }} />
+                    </td>
+                    <td style={{ ...cell, textAlign: "center" }}>
+                      {bakery.length > 1 && (
+                        <button onClick={() => removeBakeryRow(i)} style={{ padding: "4px 10px", background: "#ff6b6b", color: "#fff", border: "none", borderRadius: "4px", cursor: "pointer", fontSize: "12px" }}>✕</button>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <button onClick={addBakeryRow} style={{ marginTop: "10px", padding: "7px 14px", background: "#4caf50", color: "#fff", border: "none", borderRadius: "4px", cursor: "pointer", fontSize: "13px" }}>
+            + Add Row
+          </button>
+        </div>
+
+        {/* Action Buttons */}
+        <div style={{ display: "flex", gap: "10px", justifyContent: "flex-end" }}>
+          <button onClick={handleReset} style={{ padding: "10px 20px", background: "#6c757d", color: "#fff", border: "none", borderRadius: "4px", cursor: "pointer", fontSize: "14px" }}>
+            ↺ Reset
+          </button>
+          <button onClick={handlePrint} style={{ padding: "10px 20px", background: "#007bff", color: "#fff", border: "none", borderRadius: "4px", cursor: "pointer", fontSize: "14px" }}>
+            🖨 Print / Save as PDF
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
