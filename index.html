@@ -1,5 +1,112 @@
-import { useState } from "react";
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>JUTA FNB — Delivery Order Generator</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #f4f4f4; font-family: Arial, sans-serif; padding: 20px; color: #333; }
+  h1 { font-size: 20px; margin-bottom: 16px; color: #222; }
+  h2 { font-size: 16px; margin-bottom: 14px; color: #333; }
+  .card { background: #fff; border-radius: 8px; padding: 20px; margin-bottom: 16px; box-shadow: 0 1px 4px rgba(0,0,0,0.1); }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; }
+  label { display: block; margin-bottom: 4px; font-size: 13px; font-weight: bold; color: #555; }
+  input[type=text], input[type=date], input[type=number] {
+    padding: 7px 8px; border: 1px solid #ddd; border-radius: 4px; font-size: 13px; width: 100%;
+  }
+  .att { font-size: 13px; color: #888; margin-bottom: 10px; }
+  table { width: 100%; border-collapse: collapse; }
+  th { background: #f0f0f0; padding: 9px 10px; font-size: 12px; font-weight: bold; border-bottom: 2px solid #ddd; white-space: nowrap; text-align: center; }
+  th.left { text-align: left; }
+  td { padding: 8px 10px; border-bottom: 1px solid #eee; font-size: 13px; }
+  tr:nth-child(even) td { background: #fafafa; }
+  td input[type=number] { width: 52px; text-align: center; }
+  td input[type=text].notes { width: 130px; }
+  td input[type=text].unit-in { width: 70px; }
+  td input[type=checkbox] { width: 16px; height: 16px; cursor: pointer; }
+  .center { text-align: center; }
+  .btn { padding: 9px 20px; border: none; border-radius: 4px; cursor: pointer; font-size: 14px; }
+  .btn-green { background: #4caf50; color: #fff; margin-top: 10px; }
+  .btn-red { background: #ff6b6b; color: #fff; padding: 4px 10px; font-size: 12px; }
+  .btn-grey { background: #6c757d; color: #fff; }
+  .btn-blue { background: #007bff; color: #fff; }
+  .actions { display: flex; gap: 10px; justify-content: flex-end; }
+  .overflow { overflow-x: auto; }
+  @media print {
+    body { background: white; padding: 0; }
+    .no-print { display: none !important; }
+  }
+</style>
+</head>
+<body>
 
+<!-- Header Card -->
+<div class="card no-print">
+  <h1>JUTA FNB — Delivery Order Generator</h1>
+  <div class="grid2">
+    <div>
+      <label>Staff Name *</label>
+      <input type="text" id="staffName" placeholder="Enter staff name" />
+    </div>
+    <div>
+      <label>Date</label>
+      <input type="date" id="orderDate" />
+    </div>
+  </div>
+  <p class="att">ATT: MR HONG — 012 7638835</p>
+  <div>
+    <label>Delivery to (Branch) *</label>
+    <input type="text" id="branch" placeholder="e.g. Damansara Uptown, Bukit Jalil, Batu Pahat" />
+  </div>
+</div>
+
+<!-- Main Items Card -->
+<div class="card no-print">
+  <h2>Main Items</h2>
+  <div class="overflow">
+    <table id="mainTable">
+      <thead>
+        <tr>
+          <th class="left">Item Name</th>
+          <th>Qty</th>
+          <th>Unit</th>
+          <th>Delivered ✓</th>
+          <th>Branch ✓</th>
+          <th class="left">Notes</th>
+        </tr>
+      </thead>
+      <tbody id="mainBody"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Bakery Card -->
+<div class="card no-print">
+  <h2>Bakery Ingredients</h2>
+  <div class="overflow">
+    <table>
+      <thead>
+        <tr>
+          <th class="left">Item Name</th>
+          <th>Qty</th>
+          <th>Unit</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody id="bakeryBody"></tbody>
+    </table>
+  </div>
+  <button class="btn btn-green" onclick="addBakeryRow()">+ Add Row</button>
+</div>
+
+<!-- Actions -->
+<div class="actions no-print">
+  <button class="btn btn-grey" onclick="resetForm()">↺ Reset</button>
+  <button class="btn btn-blue" onclick="generatePrint()">🖨 Print / Save as PDF</button>
+</div>
+
+<script>
 const fixedItems = [
   { name: "Chicken Chop", unit: "Pkt" },
   { name: "Chicken wing", unit: "Pkt" },
@@ -35,236 +142,149 @@ const fixedItems = [
   { name: "Strawberry Jam", unit: "Ctn" },
 ];
 
-const today = new Date().toISOString().split("T")[0];
+// Set today's date
+document.getElementById("orderDate").value = new Date().toISOString().split("T")[0];
 
-export default function App() {
-  const [staffName, setStaffName] = useState("");
-  const [date, setDate] = useState(today);
-  const [branch, setBranch] = useState("");
-  const [quantities, setQuantities] = useState({});
-  const [delivered, setDelivered] = useState({});
-  const [checked, setChecked] = useState({});
-  const [notes, setNotes] = useState({});
-  const [bakery, setBakery] = useState([
-    { name: "", qty: "", unit: "" },
-    { name: "", qty: "", unit: "" },
-    { name: "", qty: "", unit: "" },
-    { name: "", qty: "", unit: "" },
-    { name: "", qty: "", unit: "" },
-  ]);
+// Build main items table
+const mainBody = document.getElementById("mainBody");
+fixedItems.forEach((item, i) => {
+  const tr = document.createElement("tr");
+  tr.innerHTML = `
+    <td>${item.name}</td>
+    <td class="center"><input type="number" min="0" id="qty_${i}" placeholder="0" /></td>
+    <td class="center" style="color:#777">${item.unit}</td>
+    <td class="center"><input type="checkbox" id="del_${i}" /></td>
+    <td class="center"><input type="checkbox" id="chk_${i}" /></td>
+    <td><input type="text" class="notes" id="note_${i}" placeholder="Remarks..." /></td>
+  `;
+  mainBody.appendChild(tr);
+});
 
-  const setQty = (name, val) => setQuantities(q => ({ ...q, [name]: val }));
-  const toggleDelivered = (name) => setDelivered(d => ({ ...d, [name]: !d[name] }));
-  const toggleChecked = (name) => setChecked(c => ({ ...c, [name]: !c[name] }));
-  const setNote = (name, val) => setNotes(n => ({ ...n, [name]: val }));
-
-  const setBakeryField = (i, field, val) => {
-    setBakery(b => b.map((row, idx) => idx === i ? { ...row, [field]: val } : row));
-  };
-
-  const addBakeryRow = () => setBakery(b => [...b, { name: "", qty: "", unit: "" }]);
-  const removeBakeryRow = (i) => setBakery(b => b.filter((_, idx) => idx !== i));
-
-  const handlePrint = () => {
-    if (!staffName.trim() || !branch.trim()) {
-      alert("Please fill in Staff Name and Delivery Branch.");
-      return;
-    }
-
-    const mainRows = fixedItems
-      .filter(item => quantities[item.name])
-      .map(item => `
-        <tr>
-          <td>${item.name}</td>
-          <td style="text-align:center">${quantities[item.name]}</td>
-          <td style="text-align:center">${item.unit}</td>
-          <td style="text-align:center">${delivered[item.name] ? "✓" : ""}</td>
-          <td style="text-align:center">${checked[item.name] ? "✓" : ""}</td>
-          <td>${notes[item.name] || ""}</td>
-        </tr>`).join("");
-
-    const bakeryRows = bakery
-      .filter(r => r.name.trim() && r.qty)
-      .map(r => `
-        <tr>
-          <td>${r.name} <em style="color:#888">(Bakery)</em></td>
-          <td style="text-align:center">${r.qty}</td>
-          <td style="text-align:center">${r.unit}</td>
-          <td></td><td></td><td></td>
-        </tr>`).join("");
-
-    if (!mainRows && !bakeryRows) {
-      alert("Please enter at least one item quantity.");
-      return;
-    }
-
-    const html = `<!DOCTYPE html><html><head><title>Delivery Order</title>
-    <style>
-      body { font-family: Arial, sans-serif; padding: 30px; color: #333; font-size: 13px; }
-      h2 { text-align: center; margin: 0 0 4px 0; font-size: 16px; }
-      .sub { text-align: center; margin: 0 0 16px 0; font-size: 13px; }
-      .info { margin-bottom: 16px; }
-      .info p { margin: 4px 0; }
-      table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-      th { background: #eee; border: 1px solid #ccc; padding: 8px; font-size: 12px; }
-      td { border: 1px solid #ccc; padding: 8px; font-size: 12px; }
-      @media print { body { padding: 15px; } }
-    </style></head><body>
-    <h2>JUTA FNB SDN BHD (202501027901)</h2>
-    <p class="sub">ATT: MR HONG - 012 7638835</p>
-    <div class="info">
-      <p><strong>Staff Name:</strong> ${staffName}</p>
-      <p><strong>Date:</strong> ${date}</p>
-      <p><strong>Delivery to:</strong> ${branch}</p>
-    </div>
-    <table>
-      <thead>
-        <tr>
-          <th style="text-align:left">Item Name</th>
-          <th>Qty</th><th>Unit</th>
-          <th>Delivered ✓</th>
-          <th>Checked by Branch ✓</th>
-          <th style="text-align:left">Notes</th>
-        </tr>
-      </thead>
-      <tbody>${mainRows}${bakeryRows}</tbody>
-    </table>
-    </body></html>`;
-
-    const win = window.open("", "_blank");
-    win.document.write(html);
-    win.document.close();
-    win.focus();
-    setTimeout(() => win.print(), 500);
-  };
-
-  const handleReset = () => {
-    setStaffName(""); setDate(today); setBranch("");
-    setQuantities({}); setDelivered({}); setChecked({}); setNotes({});
-    setBakery([
-      { name: "", qty: "", unit: "" }, { name: "", qty: "", unit: "" },
-      { name: "", qty: "", unit: "" }, { name: "", qty: "", unit: "" },
-      { name: "", qty: "", unit: "" },
-    ]);
-  };
-
-  const cell = { padding: "8px 10px", borderBottom: "1px solid #eee", fontSize: "13px" };
-  const th = { padding: "10px", background: "#f0f0f0", fontSize: "12px", fontWeight: "bold", borderBottom: "2px solid #ddd", whiteSpace: "nowrap" };
-  const inp = { padding: "6px", border: "1px solid #ddd", borderRadius: "4px", fontSize: "13px" };
-
-  return (
-    <div style={{ background: "#f4f4f4", minHeight: "100vh", padding: "20px", fontFamily: "Arial, sans-serif" }}>
-      <div style={{ maxWidth: "960px", margin: "0 auto" }}>
-
-        {/* Header Card */}
-        <div style={{ background: "#fff", borderRadius: "8px", padding: "20px", marginBottom: "16px", boxShadow: "0 1px 4px rgba(0,0,0,0.1)" }}>
-          <h1 style={{ margin: "0 0 16px 0", fontSize: "20px", color: "#222" }}>JUTA FNB — Delivery Order Generator</h1>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px", marginBottom: "12px" }}>
-            <div>
-              <label style={{ display: "block", marginBottom: "4px", fontSize: "13px", fontWeight: "bold", color: "#555" }}>Staff Name *</label>
-              <input value={staffName} onChange={e => setStaffName(e.target.value)} placeholder="Enter staff name" style={{ ...inp, width: "100%", boxSizing: "border-box" }} />
-            </div>
-            <div>
-              <label style={{ display: "block", marginBottom: "4px", fontSize: "13px", fontWeight: "bold", color: "#555" }}>Date</label>
-              <input type="date" value={date} onChange={e => setDate(e.target.value)} style={{ ...inp, width: "100%", boxSizing: "border-box" }} />
-            </div>
-          </div>
-          <p style={{ margin: "0 0 10px 0", fontSize: "13px", color: "#888" }}>ATT: MR HONG — 012 7638835</p>
-          <div>
-            <label style={{ display: "block", marginBottom: "4px", fontSize: "13px", fontWeight: "bold", color: "#555" }}>Delivery to (Branch) *</label>
-            <input value={branch} onChange={e => setBranch(e.target.value)} placeholder="e.g. Damansara Uptown, Bukit Jalil, Batu Pahat" style={{ ...inp, width: "100%", boxSizing: "border-box" }} />
-          </div>
-        </div>
-
-        {/* Main Items */}
-        <div style={{ background: "#fff", borderRadius: "8px", padding: "20px", marginBottom: "16px", boxShadow: "0 1px 4px rgba(0,0,0,0.1)" }}>
-          <h2 style={{ margin: "0 0 14px 0", fontSize: "16px", color: "#333" }}>Main Items</h2>
-          <div style={{ overflowX: "auto" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse" }}>
-              <thead>
-                <tr>
-                  <th style={{ ...th, textAlign: "left" }}>Item Name</th>
-                  <th style={{ ...th, textAlign: "center", width: "60px" }}>Qty</th>
-                  <th style={{ ...th, textAlign: "center", width: "55px" }}>Unit</th>
-                  <th style={{ ...th, textAlign: "center", width: "80px" }}>Delivered ✓</th>
-                  <th style={{ ...th, textAlign: "center", width: "100px" }}>Branch ✓</th>
-                  <th style={{ ...th, textAlign: "left", width: "140px" }}>Notes</th>
-                </tr>
-              </thead>
-              <tbody>
-                {fixedItems.map((item, i) => (
-                  <tr key={i} style={{ background: i % 2 === 0 ? "#fff" : "#fafafa" }}>
-                    <td style={cell}>{item.name}</td>
-                    <td style={{ ...cell, textAlign: "center" }}>
-                      <input type="number" min="0" value={quantities[item.name] || ""} onChange={e => setQty(item.name, e.target.value)} style={{ ...inp, width: "50px", textAlign: "center" }} />
-                    </td>
-                    <td style={{ ...cell, textAlign: "center", color: "#777" }}>{item.unit}</td>
-                    <td style={{ ...cell, textAlign: "center" }}>
-                      <input type="checkbox" checked={!!delivered[item.name]} onChange={() => toggleDelivered(item.name)} style={{ width: "16px", height: "16px", cursor: "pointer" }} />
-                    </td>
-                    <td style={{ ...cell, textAlign: "center" }}>
-                      <input type="checkbox" checked={!!checked[item.name]} onChange={() => toggleChecked(item.name)} style={{ width: "16px", height: "16px", cursor: "pointer" }} />
-                    </td>
-                    <td style={cell}>
-                      <input value={notes[item.name] || ""} onChange={e => setNote(item.name, e.target.value)} placeholder="Remarks..." style={{ ...inp, width: "130px" }} />
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        {/* Bakery Section */}
-        <div style={{ background: "#fff", borderRadius: "8px", padding: "20px", marginBottom: "20px", boxShadow: "0 1px 4px rgba(0,0,0,0.1)" }}>
-          <h2 style={{ margin: "0 0 14px 0", fontSize: "16px", color: "#333" }}>Bakery Ingredients</h2>
-          <div style={{ overflowX: "auto" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse" }}>
-              <thead>
-                <tr>
-                  <th style={{ ...th, textAlign: "left" }}>Item Name</th>
-                  <th style={{ ...th, textAlign: "center", width: "60px" }}>Qty</th>
-                  <th style={{ ...th, textAlign: "center", width: "90px" }}>Unit</th>
-                  <th style={{ ...th, textAlign: "center", width: "70px" }}>Remove</th>
-                </tr>
-              </thead>
-              <tbody>
-                {bakery.map((row, i) => (
-                  <tr key={i} style={{ background: i % 2 === 0 ? "#fff" : "#fafafa" }}>
-                    <td style={cell}>
-                      <input value={row.name} onChange={e => setBakeryField(i, "name", e.target.value)} placeholder="e.g. Bread flour, Sugar" style={{ ...inp, width: "100%", boxSizing: "border-box" }} />
-                    </td>
-                    <td style={{ ...cell, textAlign: "center" }}>
-                      <input type="number" min="0" value={row.qty} onChange={e => setBakeryField(i, "qty", e.target.value)} style={{ ...inp, width: "50px", textAlign: "center" }} />
-                    </td>
-                    <td style={{ ...cell, textAlign: "center" }}>
-                      <input value={row.unit} onChange={e => setBakeryField(i, "unit", e.target.value)} placeholder="Pkt/Kg" style={{ ...inp, width: "75px" }} />
-                    </td>
-                    <td style={{ ...cell, textAlign: "center" }}>
-                      {bakery.length > 1 && (
-                        <button onClick={() => removeBakeryRow(i)} style={{ padding: "4px 10px", background: "#ff6b6b", color: "#fff", border: "none", borderRadius: "4px", cursor: "pointer", fontSize: "12px" }}>✕</button>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          <button onClick={addBakeryRow} style={{ marginTop: "10px", padding: "7px 14px", background: "#4caf50", color: "#fff", border: "none", borderRadius: "4px", cursor: "pointer", fontSize: "13px" }}>
-            + Add Row
-          </button>
-        </div>
-
-        {/* Action Buttons */}
-        <div style={{ display: "flex", gap: "10px", justifyContent: "flex-end" }}>
-          <button onClick={handleReset} style={{ padding: "10px 20px", background: "#6c757d", color: "#fff", border: "none", borderRadius: "4px", cursor: "pointer", fontSize: "14px" }}>
-            ↺ Reset
-          </button>
-          <button onClick={handlePrint} style={{ padding: "10px 20px", background: "#007bff", color: "#fff", border: "none", borderRadius: "4px", cursor: "pointer", fontSize: "14px" }}>
-            🖨 Print / Save as PDF
-          </button>
-        </div>
-      </div>
-    </div>
-  );
+// Bakery rows
+let bakeryCount = 0;
+function addBakeryRow() {
+  const tbody = document.getElementById("bakeryBody");
+  const idx = bakeryCount++;
+  const tr = document.createElement("tr");
+  tr.id = `brow_${idx}`;
+  tr.innerHTML = `
+    <td><input type="text" id="bname_${idx}" placeholder="e.g. Bread flour, Sugar" /></td>
+    <td class="center"><input type="number" min="0" id="bqty_${idx}" placeholder="0" /></td>
+    <td class="center"><input type="text" class="unit-in" id="bunit_${idx}" placeholder="Pkt/Kg" /></td>
+    <td class="center"><button class="btn btn-red" onclick="removeBakeryRow('brow_${idx}')">✕</button></td>
+  `;
+  tbody.appendChild(tr);
 }
+
+// Add 5 default bakery rows
+for (let i = 0; i < 5; i++) addBakeryRow();
+
+function removeBakeryRow(id) {
+  const el = document.getElementById(id);
+  if (el) el.remove();
+}
+
+function generatePrint() {
+  const staffName = document.getElementById("staffName").value.trim();
+  const date = document.getElementById("orderDate").value;
+  const branch = document.getElementById("branch").value.trim();
+
+  if (!staffName || !branch) {
+    alert("Please fill in Staff Name and Delivery Branch.");
+    return;
+  }
+
+  let rows = "";
+
+  fixedItems.forEach((item, i) => {
+    const qty = document.getElementById(`qty_${i}`).value;
+    if (!qty || qty == 0) return;
+    const del = document.getElementById(`del_${i}`).checked ? "✓" : "";
+    const chk = document.getElementById(`chk_${i}`).checked ? "✓" : "";
+    const note = document.getElementById(`note_${i}`).value;
+    rows += `<tr>
+      <td>${item.name}</td>
+      <td style="text-align:center">${qty}</td>
+      <td style="text-align:center">${item.unit}</td>
+      <td style="text-align:center">${del}</td>
+      <td style="text-align:center">${chk}</td>
+      <td>${note}</td>
+    </tr>`;
+  });
+
+  // Bakery rows
+  document.querySelectorAll("[id^='brow_']").forEach(row => {
+    const idx = row.id.replace("brow_", "");
+    const name = document.getElementById(`bname_${idx}`)?.value.trim();
+    const qty = document.getElementById(`bqty_${idx}`)?.value;
+    const unit = document.getElementById(`bunit_${idx}`)?.value;
+    if (!name || !qty || qty == 0) return;
+    rows += `<tr>
+      <td>${name} <em style="color:#888">(Bakery)</em></td>
+      <td style="text-align:center">${qty}</td>
+      <td style="text-align:center">${unit}</td>
+      <td></td><td></td><td></td>
+    </tr>`;
+  });
+
+  if (!rows) {
+    alert("Please enter at least one item quantity.");
+    return;
+  }
+
+  const html = `<!DOCTYPE html><html><head><title>Delivery Order — ${branch}</title>
+  <style>
+    body { font-family: Arial, sans-serif; padding: 30px; color: #333; font-size: 13px; }
+    h2 { text-align: center; margin: 0 0 4px 0; font-size: 16px; }
+    .sub { text-align: center; margin: 0 0 16px 0; font-size: 13px; }
+    .info p { margin: 4px 0; }
+    table { width: 100%; border-collapse: collapse; margin-top: 16px; }
+    th { background: #eee; border: 1px solid #ccc; padding: 8px; font-size: 12px; }
+    td { border: 1px solid #ccc; padding: 8px; font-size: 12px; }
+    @media print { body { padding: 15px; } }
+  </style></head><body>
+  <h2>JUTA FNB SDN BHD (202501027901)</h2>
+  <p class="sub">ATT: MR HONG — 012 7638835</p>
+  <div class="info">
+    <p><strong>Staff Name:</strong> ${staffName}</p>
+    <p><strong>Date:</strong> ${date}</p>
+    <p><strong>Delivery to:</strong> ${branch}</p>
+  </div>
+  <table>
+    <thead>
+      <tr>
+        <th style="text-align:left">Item Name</th>
+        <th>Qty</th><th>Unit</th>
+        <th>Delivered ✓</th>
+        <th>Checked by Branch ✓</th>
+        <th style="text-align:left">Notes</th>
+      </tr>
+    </thead>
+    <tbody>${rows}</tbody>
+  </table>
+  </body></html>`;
+
+  const win = window.open("", "_blank");
+  win.document.write(html);
+  win.document.close();
+  win.focus();
+  setTimeout(() => win.print(), 400);
+}
+
+function resetForm() {
+  document.getElementById("staffName").value = "";
+  document.getElementById("orderDate").value = new Date().toISOString().split("T")[0];
+  document.getElementById("branch").value = "";
+  fixedItems.forEach((_, i) => {
+    document.getElementById(`qty_${i}`).value = "";
+    document.getElementById(`del_${i}`).checked = false;
+    document.getElementById(`chk_${i}`).checked = false;
+    document.getElementById(`note_${i}`).value = "";
+  });
+  document.getElementById("bakeryBody").innerHTML = "";
+  bakeryCount = 0;
+  for (let i = 0; i < 5; i++) addBakeryRow();
+}
+</script>
+</body>
+</html>
